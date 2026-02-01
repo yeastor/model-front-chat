@@ -1,0 +1,4 @@
+.chat { height:100vh; display:flex; flex-direction:column; padding:16px; }
+.messages { flex:1; overflow:auto; }
+.user { text-align:right; }
+.assistant { text-align:left; background:#eee; }
