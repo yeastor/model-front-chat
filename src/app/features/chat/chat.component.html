@@ -1,0 +1,20 @@
+<div class="chat-container">
+    <div class="chat-messages" #messagesContainer>
+        <ng-container *ngFor="let message of messages; trackBy: trackByMessageId">
+            <app-message-bubble
+                    [message]="message"
+                    [isTyping]="message.isTyping"
+                    [displayContent]="message.displayContent"
+            ></app-message-bubble>
+        </ng-container>
+
+        <app-loading-spinner *ngIf="isLoading"></app-loading-spinner>
+    </div>
+
+    <div class="chat-input-container">
+        <app-chat-input
+                (sendMessage)="onSendMessage($event)"
+                [disabled]="isLoading"
+        ></app-chat-input>
+    </div>
+</div>
