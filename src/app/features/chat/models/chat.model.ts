@@ -3,8 +3,8 @@ export interface ChatMessage {
     content: string;
     sender: 'user' | 'ai';
     timestamp: Date;
-    isTyping?: boolean;
-    displayContent?: string;
+    isTyping: boolean;
+    displayContent: string;
 }
 
 export interface ChatRequest {

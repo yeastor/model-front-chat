@@ -1,0 +1,29 @@
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+
+  ::ng-deep .mat-progress-spinner {
+    circle {
+      stroke: #007AFF;
+    }
+  }
+}
+
+// Для адаптивности
+@media (max-width: 768px) {
+  .loading-spinner {
+    padding: 10px;
+
+    ::ng-deep .mat-progress-spinner {
+      width: 30px !important;
+      height: 30px !important;
+
+      svg {
+        width: 30px !important;
+        height: 30px !important;
+      }
+    }
+  }
+}

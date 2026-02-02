@@ -1,22 +1,29 @@
-import { Component, Input } from '@angular/core';
-import { ChatMessage } from '../models/chat.model';
+import {booleanAttribute, Component, Input} from '@angular/core';
+import { ChatMessage } from '../../models/chat.model';
+import {TypingIndicatorComponent} from "../typing-indicator/typing-indicator.component";
 
 @Component({
     selector: 'app-message-bubble',
     template: `
-    <div [class]="getBubbleClasses()">
-      <div class="message-content" *ngIf="!isTyping">
-        <div [innerHTML]="displayContent || message.content | safeHtml"></div>
-      </div>
-      <app-typing-indicator *ngIf="isTyping"></app-typing-indicator>
-      <div class="message-time">{{ getFormattedTime() }}</div>
-    </div>
-  `,
+        <div [class]="getBubbleClasses()">
+            @if (!isTyping) {
+                <div class="message-content" >
+                    <div [innerHTML]="displayContent"></div>
+                </div>
+            } @else {
+                <app-typing-indicator></app-typing-indicator>
+            }
+            <div class="message-time">{{ getFormattedTime() }}</div>
+        </div>
+    `,
+    imports: [
+        TypingIndicatorComponent
+    ],
     styleUrls: ['./message-bubble.component.scss']
 })
 export class MessageBubbleComponent {
     @Input() message!: ChatMessage;
-    @Input() isTyping = false;
+    @Input() isTyping: boolean = false;
     @Input() displayContent = '';
 
     getBubbleClasses(): string {

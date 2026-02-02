@@ -1,17 +1,20 @@
 # Этап сборки
-FROM node:18-alpine AS build
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
 # Копируем package.json и устанавливаем зависимости
 COPY package.json package-lock.json ./
+RUN npm install
 RUN npm ci --only=production
 
 # Копируем исходный код
 COPY . .
 
 # Собираем приложение
+RUN npm install -g @angular/cli
 RUN npm run build:prod
+
 
 # Этап запуска
 FROM nginx:alpine

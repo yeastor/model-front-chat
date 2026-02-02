@@ -1,4 +1,4 @@
 export const environment = {
-    production: false,
-    apiUrl: 'http://localhost:3000' // Измените на ваш API URL
+    production: true,
+    apiUrl: 'http://46.138.252.217' // Измените на ваш API URL
 };

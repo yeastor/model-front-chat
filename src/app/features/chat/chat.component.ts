@@ -1,11 +1,20 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import {Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef} from '@angular/core';
 import { ChatService } from './services/chat.service';
 import { ChatMessage } from './models/chat.model';
 import { Subscription } from 'rxjs';
+import {MessageBubbleComponent} from "./components/message-bubble/message-bubble.component";
+import {LoadingSpinnerComponent} from "../../shared/components/loading-spinner/loading-spinner.component";
+import {ChatInputComponent} from "./components/chat-input/chat-input.component";
+import {NgForOf} from "@angular/common";
 
 @Component({
     selector: 'app-chat',
     templateUrl: './chat.component.html',
+    imports: [
+        MessageBubbleComponent,
+        LoadingSpinnerComponent,
+        ChatInputComponent,
+    ],
     styleUrls: ['./chat.component.scss']
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
@@ -15,7 +24,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     isLoading = false;
     private subscriptions = new Subscription();
 
-    constructor(private chatService: ChatService) {}
+    constructor(private chatService: ChatService, private cdr: ChangeDetectorRef) {}
 
     ngOnInit(): void {
         // Initial welcome message
@@ -24,7 +33,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             content: 'Привет! Я ваш AI помощник. Чем могу помочь?',
             sender: 'ai',
             timestamp: new Date(),
-            isTyping: false
+            isTyping: false,
+            displayContent: ''
         });
     }
 
@@ -44,8 +54,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             id: this.generateId(),
             content: message,
             sender: 'user',
-            timestamp: new Date()
+            timestamp: new Date(),
+            isTyping: false,
+            displayContent: message
         };
+
         this.messages.push(userMessage);
 
         // Add typing indicator
@@ -54,7 +67,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             content: '',
             sender: 'ai',
             timestamp: new Date(),
-            isTyping: true
+            isTyping: true,
+            displayContent: ''
         };
         this.messages.push(typingMessage);
 
@@ -73,11 +87,16 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                     isTyping: false,
                     displayContent: ''
                 };
+
+                this.isLoading = false;
+                this.cdr.detectChanges();
                 this.messages.push(aiMessage);
 
                 // Start typing effect
                 this.typeMessage(aiMessage);
-                this.isLoading = false;
+
+
+
             },
             error: (error) => {
                 console.error('Error sending message:', error);
@@ -91,19 +110,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     private typeMessage(message: ChatMessage): void {
-        const formattedContent = this.chatService.formatContent(message.content);
-        let index = 0;
+        const formattedContent: string = this.chatService.formatContent(message.content);
+        let index : number = 0;
         const speed = 20; // скорость печати в мс
 
-        const typeWriter = () => {
+        const typeWriter = setInterval(() => {
             if (index < formattedContent.length) {
-                message.displayContent = formattedContent.substring(0, index + 1);
+                message.displayContent += formattedContent.charAt(index);
                 index++;
-                setTimeout(typeWriter, speed);
+                this.cdr.detectChanges();
+            } else {
+                clearInterval(typeWriter);
             }
-        };
-
-        typeWriter();
+        }, speed);
     }
 
     private addErrorMessage(): void {
@@ -137,7 +156,4 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         } catch(err) { }
     }
 
-    trackByMessageId(index: number, message: ChatMessage): string {
-        return message.id;
-    }
 }
