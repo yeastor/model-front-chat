@@ -12,7 +12,8 @@ RUN npm ci --only=production
 COPY . .
 
 # Собираем приложение
-RUN npm install -g @angular/cli
+RUN npm install -g @angular/cli && \
+    npm install --save-dev @angular-devkit/build-angular
 RUN npm run build:prod
 
 
@@ -23,9 +24,9 @@ FROM nginx:alpine
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 
 # Копируем собранное приложение
-COPY --from=build /app/dist/frontend-app /usr/share/nginx/html
+COPY --from=build /app/dist/model-front-chat /usr/share/nginx/html
 
 # Открываем порт
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

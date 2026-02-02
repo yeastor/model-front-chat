@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "dist/ai-chat-app",
+            "outputPath": "dist/model-front-chat",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -50,16 +50,16 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "buildTarget": "ai-chat-app:build",
+            "buildTarget": "model-front-chat:build",
             "port": 4200,
             "host": "0.0.0.0"
           },
           "configurations": {
             "production": {
-              "buildTarget": "ai-chat-app:build:production"
+              "buildTarget": "model-front-chat:build:production"
             },
             "development": {
-              "buildTarget": "ai-chat-app:build:development"
+              "buildTarget": "model-front-chat:build:development"
             }
           },
           "defaultConfiguration": "development"
