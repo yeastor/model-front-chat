@@ -1,5 +1,5 @@
 {
-  "name": "ai-chat-app",
+  "name": "model-front-chat",
   "version": "1.0.0",
   "scripts": {
     "ng": "ng",

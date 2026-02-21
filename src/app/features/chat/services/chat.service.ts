@@ -1,8 +1,8 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import { ChatRequest, ChatResponse } from '../models/chat.model';
+import {Injectable} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {firstValueFrom, Observable} from 'rxjs';
+import {environment} from '../../../../environments/environment';
+import {ChatRequest, ChatResponse, MessageListResponse, StartResponse} from '../models/chat.model';
 
 @Injectable({
     providedIn: 'root'
@@ -10,11 +10,32 @@ import { ChatRequest, ChatResponse } from '../models/chat.model';
 export class ChatService {
     private apiUrl = environment.apiUrl;
 
-    constructor(private http: HttpClient) { }
+    constructor(private http: HttpClient) {
+    }
 
-    sendMessage(message: string): Observable<ChatResponse> {
-        const request: ChatRequest = { q: message };
-        return this.http.post<ChatResponse>(`${this.apiUrl}/model/chat`, request);
+    public sendMessage(chatId: string, message: string): Observable<ChatResponse> {
+        const request: ChatRequest = {
+            question: {q: message},
+            chat: {id: chatId}
+        };
+        return this.http.post<ChatResponse>(`${this.apiUrl}/model/chat/chat`, request);
+    }
+
+    public async startChat(): Promise<string> {
+        const response = await firstValueFrom(
+            this.http.post<StartResponse>(`${this.apiUrl}/model/chat/start/start`, {})
+        );
+
+        return response.chat.id;
+    }
+
+    public async loadMessages(chatId: string): Promise<MessageListResponse> {
+        return await firstValueFrom(
+            this.http.post<MessageListResponse>(
+                `${this.apiUrl}/model/chat/massage/list`,
+                {id: chatId}
+            )
+        )
     }
 
     formatContent(content: string): string {

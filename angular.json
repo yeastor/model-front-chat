@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "ai-chat-app": {
+    "model-front-chat": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -51,8 +51,7 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "buildTarget": "model-front-chat:build",
-            "port": 4200,
-            "host": "0.0.0.0"
+            "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
             "production": {

@@ -1,7 +1,7 @@
 import {Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef} from '@angular/core';
-import { ChatService } from './services/chat.service';
-import { ChatMessage } from './models/chat.model';
-import { Subscription } from 'rxjs';
+import {ChatService} from './services/chat.service';
+import {ChatMessage, Message, MessageListResponse} from './models/chat.model';
+import {range, Subscription} from 'rxjs';
 import {MessageBubbleComponent} from "./components/message-bubble/message-bubble.component";
 import {LoadingSpinnerComponent} from "../../shared/components/loading-spinner/loading-spinner.component";
 import {ChatInputComponent} from "./components/chat-input/chat-input.component";
@@ -19,23 +19,45 @@ import {NgForOf} from "@angular/common";
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
+    private chatIdKey = 'chatId';
+    private existingChatId: string = '';
 
     messages: ChatMessage[] = [];
     isLoading = false;
     private subscriptions = new Subscription();
 
-    constructor(private chatService: ChatService, private cdr: ChangeDetectorRef) {}
+    constructor(private chatService: ChatService, private cdr: ChangeDetectorRef) {
+    }
 
-    ngOnInit(): void {
-        // Initial welcome message
-        this.addMessage({
-            id: this.generateId(),
-            content: 'Привет! Я ваш AI помощник. Чем могу помочь?',
-            sender: 'ai',
-            timestamp: new Date(),
-            isTyping: false,
-            displayContent: ''
-        });
+    async ngOnInit(): Promise<void> {
+
+        const chatId = localStorage.getItem(this.chatIdKey);
+
+        if (chatId) {
+            this.existingChatId = chatId
+            const messageList = await this.chatService.loadMessages(this.existingChatId);
+            if (messageList.message.length < 1) {
+                this.addStartMessage();
+            }
+
+            messageList.message.forEach((message, index) => {
+                this.addMessage({
+                    id: message.id,
+                    content: this.chatService.formatContent(message.text),
+                    sender: message.direction == 1 ? 'user' : 'ai',
+                    timestamp: new Date(),
+                    isTyping: false,
+                    displayContent: this.chatService.formatContent(message.text)
+                })
+            })
+        } else {
+            const chatId = await this.chatService.startChat();
+            this.existingChatId = chatId
+            localStorage.setItem(this.chatIdKey, chatId);
+
+            this.addStartMessage();
+        }
+        this.cdr.detectChanges();
     }
 
     ngOnDestroy(): void {
@@ -74,7 +96,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         this.isLoading = true;
 
-        const subscription = this.chatService.sendMessage(message).subscribe({
+        const subscription = this.chatService.sendMessage(this.existingChatId, message).subscribe({
             next: (response) => {
                 // Remove typing indicator
                 this.messages.pop();
@@ -96,7 +118,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                 this.typeMessage(aiMessage);
 
 
-
             },
             error: (error) => {
                 console.error('Error sending message:', error);
@@ -111,7 +132,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     private typeMessage(message: ChatMessage): void {
         const formattedContent: string = this.chatService.formatContent(message.content);
-        let index : number = 0;
+        let index: number = 0;
         const speed = 20; // скорость печати в мс
 
         const typeWriter = setInterval(() => {
@@ -153,7 +174,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         try {
             this.messagesContainer.nativeElement.scrollTop =
                 this.messagesContainer.nativeElement.scrollHeight;
-        } catch(err) { }
+        } catch (err) {
+        }
+    }
+
+    private addStartMessage() {
+        this.addMessage({
+            id: this.generateId(),
+            content: 'Привет! Я ваш AI помощник. Чем могу помочь?',
+            sender: 'ai',
+            timestamp: new Date(),
+            isTyping: false,
+            displayContent: ''
+        });
     }
 
 }

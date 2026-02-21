@@ -1,0 +1,8 @@
+{
+  "/model/chat/**": {
+    "target": "http://localhost:8094",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}
