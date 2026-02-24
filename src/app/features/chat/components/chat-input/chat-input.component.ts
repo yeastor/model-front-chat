@@ -1,6 +1,8 @@
 import { Component, Output, EventEmitter, Input } from '@angular/core';
 import {FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatIcon} from "@angular/material/icon";
+import {MatFabButton} from "@angular/material/button";
+import {MatInput} from "@angular/material/input";
 
 @Component({
     selector: 'app-chat-input',
@@ -16,7 +18,7 @@ import {MatIcon} from "@angular/material/icon";
                         class="message-input"
                 />
                 <button
-                        mat-raised-button
+                        matFab
                         color="primary"
                         [disabled]="messageControl.invalid || disabled"
                         (click)="onSubmit()"
@@ -29,7 +31,9 @@ import {MatIcon} from "@angular/material/icon";
     `,
     imports: [
         ReactiveFormsModule,
-        MatIcon
+        MatIcon,
+        MatFabButton,
+        MatInput
     ],
     styleUrls: ['./chat-input.component.scss']
 })
