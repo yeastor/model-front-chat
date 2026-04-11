@@ -19,12 +19,11 @@ import {MatInput} from "@angular/material/input";
                 />
                 <button
                         matFab
-                        color="primary"
                         [disabled]="messageControl.invalid || disabled"
                         (click)="onSubmit()"
                         class="send-button"
                 >
-                    <mat-icon>send</mat-icon>
+                    <mat-icon>arrow_upward</mat-icon>
                 </button>
             </div>
         </div>

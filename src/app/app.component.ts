@@ -8,7 +8,7 @@ import { RouterOutlet } from '@angular/router';
     template: `
     <div class="app-container">
       <header class="app-header">
-        <h1>AI Chat Assistant</h1>
+        <h1>АЙзащита</h1>
       </header>
       <main class="app-main">
         <router-outlet></router-outlet>
