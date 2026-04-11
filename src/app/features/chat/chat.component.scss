@@ -17,6 +17,20 @@
   min-height: 0;
 }
 
+.chat-message-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+
+  &--user {
+    align-items: flex-end;
+  }
+
+  &--ai {
+    align-items: flex-start;
+  }
+}
+
 .chat-input-container {
   padding: 5px;
   background: white;

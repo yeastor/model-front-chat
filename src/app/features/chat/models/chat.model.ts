@@ -5,6 +5,8 @@ export interface ChatMessage {
     timestamp: Date;
     isTyping: boolean;
     displayContent: string;
+    views?: ChatViewDto[];
+    areViewsVisible?: boolean;
 }
 
 export interface ChatDto {
@@ -13,6 +15,23 @@ export interface ChatDto {
 
 export interface ChatQuestionDto {
     q: string;
+    variant?: ChatQuestionVariantDto;
+}
+
+export interface ChatQuestionVariantDto {
+    id: string;
+}
+
+export interface ChatViewDto {
+    type: string;
+    id: string;
+    value: string;
+    question: string;
+}
+
+export interface ChatNextDto {
+    questionText: string;
+    view: ChatViewDto[];
 }
 
 export interface ChatRequest {
@@ -21,21 +40,10 @@ export interface ChatRequest {
 }
 
 export interface ChatResponse {
-    answer: {
+    answer?: {
         content: string;
+        next?: ChatNextDto[];
     };
-}
-
-export interface ApiResponse<T> {
-    data: T;
-    success: boolean;
-    error?: string;
-}
-
-export interface Message {
-    id?: string;
-    text: string;
-    direction: 'user' | 'assistant';
 }
 
 export  interface StartResponse {

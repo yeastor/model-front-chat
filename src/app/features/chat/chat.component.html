@@ -2,11 +2,25 @@
     <div class="chat-messages" #messagesContainer>
         <ng-container>
             @for (message of messages; track message.id) {
-                <app-message-bubble
-                        [message]="message"
-                        [isTyping]="message.isTyping"
-                        [displayContent]="message.displayContent"
-                ></app-message-bubble>
+                <div
+                        class="chat-message-group"
+                        [class.chat-message-group--user]="message.sender === 'user'"
+                        [class.chat-message-group--ai]="message.sender === 'ai'"
+                >
+                    <app-message-bubble
+                            [message]="message"
+                            [isTyping]="message.isTyping"
+                            [displayContent]="message.displayContent"
+                    ></app-message-bubble>
+
+                    @if (message.sender === 'ai' && message.areViewsVisible && message.views?.length) {
+                        <app-message-badges
+                                [views]="message.views ?? []"
+                                [disabled]="isLoading"
+                                (badgeClick)="onViewClick($event)"
+                        ></app-message-badges>
+                    }
+                </div>
             }
         </ng-container>
 

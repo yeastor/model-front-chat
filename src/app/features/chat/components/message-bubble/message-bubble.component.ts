@@ -1,6 +1,6 @@
-import {booleanAttribute, Component, Input} from '@angular/core';
-import { ChatMessage } from '../../models/chat.model';
-import {TypingIndicatorComponent} from "../typing-indicator/typing-indicator.component";
+import {Component, Input} from '@angular/core';
+import {ChatMessage} from '../../models/chat.model';
+import {TypingIndicatorComponent} from '../typing-indicator/typing-indicator.component';
 
 @Component({
     selector: 'app-message-bubble',

@@ -1,0 +1,28 @@
+.message-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.message-badge {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #e0f2fe;
+  color: #0f3b57;
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.message-badge:hover:not(:disabled) {
+  background: #bae6fd;
+  transform: translateY(-1px);
+}
+
+.message-badge:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
