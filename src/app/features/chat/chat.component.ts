@@ -75,7 +75,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     onSendMessage(message: string): void {
         if (!message.trim()) return;
 
-        this.sendChatMessage(message.trim());
+        this.sendChatMessage(message.trim(), message.trim());
     }
 
     onViewClick(view: ChatViewDto): void {
@@ -83,21 +83,21 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             return;
         }
 
-        this.sendChatMessage(view.question, view.id);
+        this.sendChatMessage(view.question, view.id, view.variantId, view.categoryId);
     }
 
-    private sendChatMessage(message: string, variantId?: string): void {
-        if (!message) {
+    private sendChatMessage(chatMessageView: string, sendToBackMessage: string, variantId?: string, categoryId?: string): void {
+        if (!chatMessageView) {
             return;
         }
 
         const userMessage: ChatMessage = {
             id: this.generateId(),
-            content: message,
+            content: chatMessageView,
             sender: 'user',
             timestamp: new Date(),
             isTyping: false,
-            displayContent: message,
+            displayContent: chatMessageView,
             views: [],
             areViewsVisible: false
         };
@@ -118,7 +118,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         this.isLoading = true;
 
-        const subscription = this.chatService.sendMessage(this.existingChatId, message, variantId).subscribe({
+        const subscription = this.chatService.sendMessage(this.existingChatId, sendToBackMessage, variantId, categoryId).subscribe({
             next: async (response) => {
                 this.messages.pop();
 

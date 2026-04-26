@@ -27,6 +27,8 @@ export interface ChatViewDto {
     id: string;
     value: string;
     question: string;
+    variantId: string;
+    categoryId: string;
 }
 
 export interface ChatNextDto {

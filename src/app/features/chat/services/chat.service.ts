@@ -13,11 +13,12 @@ export class ChatService {
     constructor(private http: HttpClient) {
     }
 
-    public sendMessage(chatId: string, message: string, variantId?: string): Observable<ChatResponse> {
+    public sendMessage(chatId: string, message: string, variantId?: string, categoryId?: string): Observable<ChatResponse> {
         const request: ChatRequest = {
             question: {
                 q: message,
-                ...(variantId ? {variant: {id: variantId}} : {})
+                ...(variantId ? {variant: {id: variantId}} : {}),
+                ...(categoryId ? {category: {id: categoryId}} : {})
             },
             chat: {id: chatId}
         };
