@@ -45,7 +45,13 @@ export interface ChatResponse {
     answer?: {
         content: string;
         next?: ChatNextDto[];
+        category?: ChatCategoryDto;
     };
+}
+
+export interface ChatCategoryDto {
+    id?: string;
+    name?: string;
 }
 
 export  interface StartResponse {
@@ -54,10 +60,13 @@ export  interface StartResponse {
     };
 }
 
+export interface MessageListItem {
+    id: string;
+    text: string;
+    direction: number;
+    category?: ChatCategoryDto;
+}
+
 export interface MessageListResponse {
-    message: Array<{
-        id: string;
-        text: string;
-        direction: number;
-    }>;
+    message: MessageListItem[];
 }

@@ -1,7 +1,8 @@
 import {Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef} from '@angular/core';
+import {Subscription} from 'rxjs';
+import {LocalStorageService} from '../../core/services/local-storage.service';
 import {ChatService} from './services/chat.service';
 import {ChatMessage, ChatResponse, ChatViewDto} from './models/chat.model';
-import {Subscription} from 'rxjs';
 import {MessageBubbleComponent} from './components/message-bubble/message-bubble.component';
 import {MessageBadgesComponent} from './components/message-badges/message-badges.component';
 import {LoadingSpinnerComponent} from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -20,7 +21,6 @@ import {ChatInputComponent} from './components/chat-input/chat-input.component';
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
-    private chatIdKey = 'chatId';
     private existingChatId: string = '';
     private typingIntervals = new Set<ReturnType<typeof setInterval>>();
 
@@ -28,12 +28,16 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     isLoading = false;
     private subscriptions = new Subscription();
 
-    constructor(private chatService: ChatService, private cdr: ChangeDetectorRef) {
+    constructor(
+        private chatService: ChatService,
+        private cdr: ChangeDetectorRef,
+        private localStorageService: LocalStorageService
+    ) {
     }
 
     async ngOnInit(): Promise<void> {
 
-        const chatId = localStorage.getItem(this.chatIdKey);
+        const chatId = this.localStorageService.getChatId();
 
         if (chatId) {
             this.existingChatId = chatId;
@@ -55,7 +59,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         } else {
             const chatId = await this.chatService.startChat();
             this.existingChatId = chatId;
-            localStorage.setItem(this.chatIdKey, chatId);
+            this.localStorageService.setChatId(chatId);
 
             this.addStartMessage();
         }
