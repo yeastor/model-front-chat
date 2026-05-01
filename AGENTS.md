@@ -47,6 +47,7 @@ npm run e2e            # Run end-to-end tests
 - **Quotes**: Single quotes for strings preferred
 - **Semicolons**: Required
 - **Line Length**: No strict limit, but prefer readable lines
+- All logic for local storage always do in service src/app/core/services/local-storage.service.ts
 
 ### TypeScript
 - **Strict Mode**: Always enabled (`strict: true` in tsconfig.json)

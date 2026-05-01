@@ -22,4 +22,8 @@ export class LocalStorageService {
     public setCategoryId(categoryId: string): void {
         localStorage.setItem(this.categoryIdKey, categoryId);
     }
+
+    public flushCategoryId(): void {
+        localStorage.removeItem(this.categoryIdKey);
+    }
 }

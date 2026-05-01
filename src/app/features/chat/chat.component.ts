@@ -39,6 +39,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         const chatId = this.localStorageService.getChatId();
 
+        this.localStorageService.flushCategoryId()
+
         if (chatId) {
             this.existingChatId = chatId;
             const messageList = await this.chatService.loadMessages(this.existingChatId);
@@ -95,6 +97,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             return;
         }
 
+        const resolvedCategoryId = categoryId || this.localStorageService.getCategoryId() || undefined;
+
         const userMessage: ChatMessage = {
             id: this.generateId(),
             content: chatMessageView,
@@ -122,7 +126,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         this.isLoading = true;
 
-        const subscription = this.chatService.sendMessage(this.existingChatId, sendToBackMessage, variantId, categoryId).subscribe({
+        const subscription = this.chatService.sendMessage(this.existingChatId, sendToBackMessage, variantId, resolvedCategoryId).subscribe({
             next: async (response) => {
                 this.messages.pop();
 
