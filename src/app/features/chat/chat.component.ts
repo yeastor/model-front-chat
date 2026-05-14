@@ -157,27 +157,55 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     private mapResponseToMessages(response: ChatResponse): ChatMessage[] {
-        const views: ChatViewDto[] = (response.answer?.next ?? []).flatMap((nextItem): ChatViewDto[] =>
-            (nextItem.view ?? []).map((view: ChatViewDto) => ({
-                ...view,
-                question: view.question || nextItem.questionText
-            }))
-        );
 
-        if (!response.answer?.content && views.length === 0) {
+
+        if (!response.answer?.content) {
             return [];
         }
 
-        return [{
+        let res : ChatMessage[] = [{
             id: this.generateId(),
             content: response.answer?.content ?? '',
             sender: 'ai' as const,
             timestamp: new Date(),
             isTyping: false,
             displayContent: '',
-            views,
             areViewsVisible: false
-        }];
+        }]
+
+        if (response.answer?.next && response.answer?.next.length > 0) {
+            for (const next of response.answer?.next) {
+                let views : ChatViewDto[] = [];
+                for (let v of next.view) {
+                    views.push(
+                        {
+                            categoryId: v.categoryId,
+                            id: v.id,
+                            question: v.question || next.questionText,
+                            type: v.type,
+                            value: v.value,
+                            variantId: v.variantId,
+                        }
+                    );
+                }
+
+
+                res.push(
+                    {
+                        id: this.generateId(),
+                        content: next.type == 'choice' ? next.questionText : '',
+                        sender: 'ai' as const,
+                        timestamp: new Date(),
+                        isTyping: false,
+                        displayContent: '',
+                        views: views,
+                        areViewsVisible: false
+                    }
+                );
+            }
+        }
+
+        return res;
     }
 
     private typeMessage(message: ChatMessage): Promise<void> {

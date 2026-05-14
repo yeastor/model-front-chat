@@ -32,7 +32,8 @@ export interface ChatViewDto {
 }
 
 export interface ChatNextDto {
-    questionText: string;
+    questionText: string
+    type: string
     view: ChatViewDto[];
 }
 
