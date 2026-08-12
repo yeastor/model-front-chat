@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {firstValueFrom, Observable, tap} from 'rxjs';
 import {LocalStorageService} from '../../../core/services/local-storage.service';
 import {environment} from '../../../../environments/environment';
-import {ChatRequest, ChatResponse, MessageListItem, MessageListResponse, StartResponse} from '../models/chat.model';
+import {ChatListResponse, ChatRequest, ChatResponse, MessageListItem, MessageListResponse, StartResponse} from '../models/chat.model';
 
 @Injectable({
     providedIn: 'root'
@@ -29,6 +29,10 @@ export class ChatService {
                 this.saveCategoryId(this.getAnswerCategoryId(response));
             })
         );
+    }
+
+    public getList(): Observable<ChatListResponse> {
+        return this.http.get<ChatListResponse>(`${this.apiUrl}/model/chat/list`);
     }
 
     public async startChat(): Promise<string> {

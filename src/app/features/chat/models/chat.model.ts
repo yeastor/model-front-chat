@@ -71,3 +71,12 @@ export interface MessageListItem {
 export interface MessageListResponse {
     message: MessageListItem[];
 }
+
+export interface ChatListItem {
+    id: string;
+    name: string;
+}
+
+export interface ChatListResponse {
+    chats: ChatListItem[];
+}

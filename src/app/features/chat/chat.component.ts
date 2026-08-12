@@ -1,5 +1,5 @@
 import {Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef} from '@angular/core';
-import {Subscription} from 'rxjs';
+import {firstValueFrom, Subscription} from 'rxjs';
 import {LocalStorageService} from '../../core/services/local-storage.service';
 import {ChatService} from './services/chat.service';
 import {ChatMessage, ChatResponse, ChatViewDto} from './models/chat.model';
@@ -36,35 +36,43 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     async ngOnInit(): Promise<void> {
+        this.localStorageService.flushCategoryId();
 
-        const chatId = this.localStorageService.getChatId();
+        const list = await firstValueFrom(this.chatService.getList());
 
-        this.localStorageService.flushCategoryId()
+        let chatId = this.localStorageService.getChatId();
 
-        if (chatId) {
-            this.existingChatId = chatId;
-            const messageList = await this.chatService.loadMessages(this.existingChatId);
-            if (messageList.message.length < 1) {
-                this.addStartMessage();
-            }
-
-            messageList.message.forEach((message) => {
-                this.addMessage({
-                    id: message.id,
-                    content: this.chatService.formatContent(message.text),
-                    sender: message.direction == 1 ? 'user' : 'ai',
-                    timestamp: new Date(),
-                    isTyping: false,
-                    displayContent: this.chatService.formatContent(message.text)
-                });
-            });
-        } else {
-            const chatId = await this.chatService.startChat();
-            this.existingChatId = chatId;
+        if (list.chats.length > 0) {
+            chatId = list.chats[0].id;
             this.localStorageService.setChatId(chatId);
+        } else if (!chatId) {
+            const newChatId = await this.chatService.startChat();
+            this.existingChatId = newChatId;
+            this.localStorageService.setChatId(newChatId);
 
             this.addStartMessage();
+
+            this.cdr.detectChanges();
+            return;
         }
+
+        this.existingChatId = chatId;
+        const messageList = await this.chatService.loadMessages(this.existingChatId);
+        if (messageList.message.length < 1) {
+            this.addStartMessage();
+        }
+
+        messageList.message.forEach((message) => {
+            this.addMessage({
+                id: message.id,
+                content: this.chatService.formatContent(message.text),
+                sender: message.direction == 1 ? 'user' : 'ai',
+                timestamp: new Date(),
+                isTyping: false,
+                displayContent: this.chatService.formatContent(message.text)
+            });
+        });
+
         this.cdr.detectChanges();
     }
 
