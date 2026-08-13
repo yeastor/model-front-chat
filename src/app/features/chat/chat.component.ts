@@ -74,6 +74,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
 
         this.cdr.detectChanges();
+        this.scrollToBottom();
     }
 
     ngOnDestroy(): void {
