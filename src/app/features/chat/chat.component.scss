@@ -1,7 +1,7 @@
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 72px);
+  height: 100%;
   max-width: 800px;
   margin: 0 auto;
   background: #ffffff;
@@ -41,7 +41,7 @@
 
 @media (max-width: 768px) {
   .chat-container {
-    height: 100vh;
+    height: 100%;
   }
 
   .chat-messages {

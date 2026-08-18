@@ -54,26 +54,3 @@ primary: $primary,
     padding: 0;
     box-sizing: border-box;
 }
-
-.app-container {
-    height: 100vh;
-    overflow: hidden;
-}
-
-.app-header {
-    background: white;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e0e0e0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-
-    h1 {
-        font-size: 20px;
-        font-weight: 600;
-        color: #333;
-        text-align: center;
-    }
-}
-
-.app-main {
-    height: calc(100vh - 73px);
-}
