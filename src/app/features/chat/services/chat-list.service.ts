@@ -58,7 +58,7 @@ export class ChatListService {
         const chatId = await this.chatService.startChat();
         this.localStorageService.setChatId(chatId);
 
-        this.chats = [...this.chats, {id: chatId, name: 'Новый чат'}];
+        this.chats = [{id: chatId, name: 'Новый чат'}, ...this.chats];
         this.chatsSubject.next(this.chats);
         this.selectedChatIdSubject.next(chatId);
 
