@@ -34,6 +34,7 @@ export class ChatListService {
             const firstChatId = list.chats[0].id;
             this.localStorageService.setChatId(firstChatId);
             this.selectedChatIdSubject.next(firstChatId);
+            this.chatsSubject.next(this.chats);
             return;
         }
 
