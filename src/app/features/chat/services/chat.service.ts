@@ -3,7 +3,16 @@ import {HttpClient} from '@angular/common/http';
 import {firstValueFrom, Observable, tap} from 'rxjs';
 import {LocalStorageService} from '../../../core/services/local-storage.service';
 import {environment} from '../../../../environments/environment';
-import {ChatRequest, ChatResponse, MessageListItem, MessageListResponse, StartResponse} from '../models/chat.model';
+import {
+    ChatAnswerSelectionDto,
+    ChatLaunchParams,
+    ChatRequest,
+    ChatResponse,
+    ChatStartRequest,
+    MessageListItem,
+    MessageListResponse,
+    StartResponse
+} from '../models/chat.model';
 
 @Injectable({
     providedIn: 'root'
@@ -14,11 +23,10 @@ export class ChatService {
     constructor(private http: HttpClient, private localStorageService: LocalStorageService) {
     }
 
-    public sendMessage(chatId: string, message: string, variantId?: string, categoryId?: string): Observable<ChatResponse> {
+    public sendMessage(chatId: string, message: string, categoryId?: string): Observable<ChatResponse> {
         const request: ChatRequest = {
             question: {
                 q: message,
-                ...(variantId ? {variant: {id: variantId}} : {}),
                 ...(categoryId ? {category: {id: categoryId}} : {})
             },
             chat: {id: chatId}
@@ -31,12 +39,28 @@ export class ChatService {
         );
     }
 
-    public async startChat(): Promise<string> {
-        const response = await firstValueFrom(
-            this.http.post<StartResponse>(`${this.apiUrl}/model/chat/start/start`, {})
-        );
+    public sendTypedAnswer(chatId: string, selection: ChatAnswerSelectionDto): Observable<ChatResponse> {
+        const request: ChatRequest = {
+            chat: {id: chatId},
+            answer: {
+                question_id: selection.question_id,
+                answer_key: selection.answer_key
+            }
+        };
 
-        return response.chat.id;
+        return this.http.post<ChatResponse>(`${this.apiUrl}/model/chat/next/answer`, request).pipe(
+            tap((response: ChatResponse) => {
+                this.saveCategoryId(this.getAnswerCategoryId(response));
+            })
+        );
+    }
+
+    public async startChat(launch?: ChatLaunchParams): Promise<StartResponse> {
+        const request: ChatStartRequest = launch ? {launch} : {};
+
+        return firstValueFrom(
+            this.http.post<StartResponse>(`${this.apiUrl}/model/chat/start/start`, request)
+        );
     }
 
     public async loadMessages(chatId: string): Promise<MessageListResponse> {

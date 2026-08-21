@@ -7,7 +7,7 @@
                         [class.chat-message-group--user]="message.sender === 'user'"
                         [class.chat-message-group--ai]="message.sender === 'ai'"
                 >
-                    @if (message.displayContent != '') {
+                    @if (message.displayContent !== '') {
                         <app-message-bubble
                                 [message]="message"
                                 [isTyping]="message.isTyping"
@@ -21,6 +21,14 @@
                                 [disabled]="isLoading"
                                 (badgeClick)="onViewClick($event)"
                         ></app-message-badges>
+                    }
+
+                    @if (message.sender === 'ai' && message.areViewsVisible && message.nextQuestion) {
+                        <app-typed-next-question
+                                [question]="message.nextQuestion"
+                                [disabled]="isLoading"
+                                (answerClick)="onNextAnswer($event)"
+                        ></app-typed-next-question>
                     }
                 </div>
             }

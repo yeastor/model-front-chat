@@ -1,10 +1,22 @@
 import {Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef} from '@angular/core';
-import {Subscription} from 'rxjs';
+import {ActivatedRoute} from '@angular/router';
+import {Observable, Subscription} from 'rxjs';
+
 import {LocalStorageService} from '../../core/services/local-storage.service';
 import {ChatService} from './services/chat.service';
-import {ChatMessage, ChatResponse, ChatViewDto} from './models/chat.model';
+import {
+    ChatAnswerSelectionDto,
+    ChatLegacyNextDto,
+    ChatMessage,
+    ChatNextDto,
+    ChatResponse,
+    ChatViewDto
+} from './models/chat.model';
+import {readChatLaunchParams} from './models/chat-launch';
+import {normalizeChatNextQuestion} from './models/chat-next';
 import {MessageBubbleComponent} from './components/message-bubble/message-bubble.component';
 import {MessageBadgesComponent} from './components/message-badges/message-badges.component';
+import {TypedNextQuestionComponent} from './components/typed-next-question/typed-next-question.component';
 import {LoadingSpinnerComponent} from '../../shared/components/loading-spinner/loading-spinner.component';
 import {ChatInputComponent} from './components/chat-input/chat-input.component';
 
@@ -14,14 +26,15 @@ import {ChatInputComponent} from './components/chat-input/chat-input.component';
     imports: [
         MessageBubbleComponent,
         MessageBadgesComponent,
+        TypedNextQuestionComponent,
         LoadingSpinnerComponent,
         ChatInputComponent,
     ],
     styleUrls: ['./chat.component.scss']
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
-    @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
-    private existingChatId: string = '';
+    @ViewChild('messagesContainer') private messagesContainer!: ElementRef<HTMLElement>;
+    private existingChatId = '';
     private typingIntervals = new Set<ReturnType<typeof setInterval>>();
 
     messages: ChatMessage[] = [];
@@ -31,15 +44,15 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     constructor(
         private chatService: ChatService,
         private cdr: ChangeDetectorRef,
-        private localStorageService: LocalStorageService
+        private localStorageService: LocalStorageService,
+        private route: ActivatedRoute
     ) {
     }
 
     async ngOnInit(): Promise<void> {
-
         const chatId = this.localStorageService.getChatId();
 
-        this.localStorageService.flushCategoryId()
+        this.localStorageService.flushCategoryId();
 
         if (chatId) {
             this.existingChatId = chatId;
@@ -52,18 +65,27 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                 this.addMessage({
                     id: message.id,
                     content: this.chatService.formatContent(message.text),
-                    sender: message.direction == 1 ? 'user' : 'ai',
+                    sender: message.direction === 1 ? 'user' : 'ai',
                     timestamp: new Date(),
                     isTyping: false,
                     displayContent: this.chatService.formatContent(message.text)
                 });
             });
         } else {
-            const chatId = await this.chatService.startChat();
-            this.existingChatId = chatId;
-            this.localStorageService.setChatId(chatId);
+            const launch = readChatLaunchParams(this.route.snapshot.queryParamMap);
+            const startResponse = await this.chatService.startChat(launch);
+            this.existingChatId = startResponse.chat.id;
+            this.localStorageService.setChatId(this.existingChatId);
 
-            this.addStartMessage();
+            const launchMessages = this.mapResponseToMessages(startResponse);
+            if (launchMessages.length > 0) {
+                launchMessages.forEach((message) => this.addMessage({
+                    ...message,
+                    areViewsVisible: true
+                }));
+            } else {
+                this.addStartMessage();
+            }
         }
         this.cdr.detectChanges();
     }
@@ -89,16 +111,42 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             return;
         }
 
-        this.sendChatMessage(view.question, view.id, view.variantId, view.categoryId);
+        this.sendChatMessage(view.question, view.id, view.categoryId);
     }
 
-    private sendChatMessage(chatMessageView: string, sendToBackMessage: string, variantId?: string, categoryId?: string): void {
+    onNextAnswer(selection: ChatAnswerSelectionDto): void {
+        if (this.isLoading) {
+            return;
+        }
+
+        const question = [...this.messages]
+            .reverse()
+            .find((message) => message.nextQuestion?.id === selection.question_id)
+            ?.nextQuestion;
+        const answerLabel = question?.answers.find((answer) => answer.key === selection.answer_key)?.label;
+        if (!answerLabel) {
+            return;
+        }
+
+        this.sendChatRequest(
+            answerLabel,
+            this.chatService.sendTypedAnswer(this.existingChatId, selection)
+        );
+    }
+
+    private sendChatMessage(chatMessageView: string, sendToBackMessage: string, categoryId?: string): void {
         if (!chatMessageView) {
             return;
         }
 
         const resolvedCategoryId = categoryId || this.localStorageService.getCategoryId() || undefined;
+        this.sendChatRequest(
+            chatMessageView,
+            this.chatService.sendMessage(this.existingChatId, sendToBackMessage, resolvedCategoryId)
+        );
+    }
 
+    private sendChatRequest(chatMessageView: string, response: Observable<ChatResponse>): void {
         const userMessage: ChatMessage = {
             id: this.generateId(),
             content: chatMessageView,
@@ -126,7 +174,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         this.isLoading = true;
 
-        const subscription = this.chatService.sendMessage(this.existingChatId, sendToBackMessage, variantId, resolvedCategoryId).subscribe({
+        const subscription = response.subscribe({
             next: async (response) => {
                 this.messages.pop();
 
@@ -157,55 +205,69 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     private mapResponseToMessages(response: ChatResponse): ChatMessage[] {
-
-
-        if (!response.answer?.content) {
+        if (!response.answer) {
             return [];
         }
 
-        let res : ChatMessage[] = [{
-            id: this.generateId(),
-            content: response.answer?.content ?? '',
-            sender: 'ai' as const,
-            timestamp: new Date(),
-            isTyping: false,
-            displayContent: '',
-            areViewsVisible: false
-        }]
+        const res: ChatMessage[] = [];
+        if (response.answer.content) {
+            res.push({
+                id: this.generateId(),
+                content: response.answer.content,
+                sender: 'ai',
+                timestamp: new Date(),
+                isTyping: false,
+                displayContent: '',
+                areViewsVisible: false
+            });
+        }
 
-        if (response.answer?.next && response.answer?.next.length > 0) {
-            for (const next of response.answer?.next) {
-                let views : ChatViewDto[] = [];
-                for (let v of next.view) {
-                    views.push(
-                        {
-                            categoryId: v.categoryId,
-                            id: v.id,
-                            question: v.question || next.questionText,
-                            type: v.type,
-                            value: v.value,
-                            variantId: v.variantId,
-                        }
-                    );
+        for (const next of response.answer.next ?? []) {
+            const typedQuestion = normalizeChatNextQuestion(next);
+            if (typedQuestion) {
+                res.push({
+                    id: this.generateId(),
+                    content: '',
+                    sender: 'ai',
+                    timestamp: new Date(),
+                    isTyping: false,
+                    displayContent: '',
+                    nextQuestion: typedQuestion,
+                    areViewsVisible: false
+                });
+                continue;
+            }
+
+            if (this.isLegacyNext(next)) {
+                const views: ChatViewDto[] = [];
+                for (const view of next.view) {
+                    views.push({
+                        categoryId: view.categoryId,
+                        id: view.id,
+                        question: view.question || next.questionText,
+                        type: view.type,
+                        value: view.value
+                    });
                 }
 
-
-                res.push(
-                    {
-                        id: this.generateId(),
-                        content: next.type == 'choice' ? next.questionText : '',
-                        sender: 'ai' as const,
-                        timestamp: new Date(),
-                        isTyping: false,
-                        displayContent: '',
-                        views: views,
-                        areViewsVisible: false
-                    }
-                );
+                res.push({
+                    id: this.generateId(),
+                    content: next.type === 'choice' ? next.questionText : '',
+                    sender: 'ai',
+                    timestamp: new Date(),
+                    isTyping: false,
+                    displayContent: '',
+                    views,
+                    areViewsVisible: false
+                });
             }
         }
 
         return res;
+    }
+
+    private isLegacyNext(next: ChatNextDto): next is ChatLegacyNextDto {
+        return 'view' in next && Array.isArray(next.view);
     }
 
     private typeMessage(message: ChatMessage): Promise<void> {
@@ -263,18 +325,18 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     private generateId(): string {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        return Date.now().toString(36) + Math.random().toString(36).substring(2);
     }
 
     private scrollToBottom(): void {
         try {
             this.messagesContainer.nativeElement.scrollTop =
                 this.messagesContainer.nativeElement.scrollHeight;
-        } catch (err) {
+        } catch {
         }
     }
 
-    private addStartMessage() {
+    private addStartMessage(): void {
         this.addMessage({
             id: this.generateId(),
             content: 'Привет! Я ваш AI помощник. Чем могу помочь?',
@@ -284,5 +346,4 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             displayContent: ''
         });
     }
-
 }

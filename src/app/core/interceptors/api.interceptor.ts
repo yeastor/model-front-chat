@@ -5,7 +5,7 @@ import { catchError } from 'rxjs/operators';
 
 @Injectable()
 export class ApiInterceptor implements HttpInterceptor {
-    intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
         // Можно добавить заголовки, токены и т.д.
         const clonedRequest = req.clone({
             headers: req.headers.set('Content-Type', 'application/json')
