@@ -1,7 +1,3 @@
-export type ChatAnswerKey = 'yes' | 'no';
-
-export type ChatContextValue = boolean | null;
-
 export interface ChatMessage {
     id: string;
     content: string;
@@ -10,7 +6,6 @@ export interface ChatMessage {
     isTyping: boolean;
     displayContent: string;
     views?: ChatViewDto[];
-    nextQuestion?: ChatNextQuestionDto;
     areViewsVisible?: boolean;
 }
 
@@ -18,43 +13,13 @@ export interface ChatDto {
     id: string;
 }
 
-export interface ChatCategoryDto {
-    id?: string;
-    name?: string;
-}
-
 export interface ChatQuestionDto {
     q: string;
-    category?: ChatCategoryDto;
+    variant?: ChatQuestionVariantDto;
 }
 
-export interface ChatAnswerSelectionDto {
-    question_id: string;
-    answer_key: ChatAnswerKey;
-}
-
-export interface ChatFreeTextRequest {
-    chat: ChatDto;
-    question: ChatQuestionDto;
-}
-
-export interface ChatTypedAnswerRequest {
-    chat: ChatDto;
-    answer: ChatAnswerSelectionDto;
-}
-
-export type ChatRequest = ChatFreeTextRequest | ChatTypedAnswerRequest;
-
-export interface ChatNextAnswerDto {
-    key: ChatAnswerKey;
-    label: string;
-}
-
-export interface ChatNextQuestionDto {
+export interface ChatQuestionVariantDto {
     id: string;
-    question: string;
-    type: 'chips_yes_no';
-    answers: ChatNextAnswerDto[];
 }
 
 export interface ChatViewDto {
@@ -62,51 +27,38 @@ export interface ChatViewDto {
     id: string;
     value: string;
     question: string;
+    variantId: string;
     categoryId: string;
 }
 
-export interface ChatLegacyNextDto {
-    questionText: string;
-    type: string;
+export interface ChatNextDto {
+    questionText: string
+    type: string
     view: ChatViewDto[];
 }
 
-export type ChatNextDto = ChatNextQuestionDto | ChatLegacyNextDto;
-
-export interface ChatAnswerDto {
-    content: string;
-    next?: ChatNextDto[];
-    category?: ChatCategoryDto;
-}
-
-export interface ChatRuntimeDto {
+export interface ChatRequest {
     chat: ChatDto;
-    variant_id: string;
-    context: Record<string, ChatContextValue>;
-    context_contract_id: string;
-    graph_sha256: string;
-    revision: number;
+    question: ChatQuestionDto;
 }
 
 export interface ChatResponse {
-    answer?: ChatAnswerDto;
-    runtime?: ChatRuntimeDto;
+    answer?: {
+        content: string;
+        next?: ChatNextDto[];
+        category?: ChatCategoryDto;
+    };
 }
 
-export interface ChatLaunchParams {
-    category_id?: string;
-    stage_id?: string;
-    variant_id?: string;
-    context?: Record<string, ChatContextValue>;
-    context_contract_id?: string;
+export interface ChatCategoryDto {
+    id?: string;
+    name?: string;
 }
 
-export interface ChatStartRequest {
-    launch?: ChatLaunchParams;
-}
-
-export interface StartResponse extends ChatResponse {
-    chat: ChatDto;
+export  interface StartResponse {
+    chat: {
+        id: string;
+    };
 }
 
 export interface MessageListItem {

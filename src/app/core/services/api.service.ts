@@ -9,7 +9,7 @@ import { environment } from '../../environments/environment';
 export class ApiService {
     constructor(private http: HttpClient) {}
 
-    post<T>(url: string, body: unknown): Observable<T> {
+    post<T>(url: string, body: any): Observable<T> {
         return this.http.post<T>(`${environment.apiUrl}${url}`, body);
     }
 }
