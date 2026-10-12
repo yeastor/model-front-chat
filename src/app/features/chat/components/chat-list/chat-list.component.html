@@ -1,0 +1,38 @@
+<div class="chat-list">
+    @if (showToggleButton) {
+        <button
+                mat-icon-button
+                type="button"
+                class="chat-list__toggle"
+                [attr.aria-label]="isOpen ? 'Скрыть список чатов' : 'Показать список чатов'"
+                (click)="toggleMenu()"
+        >
+            <mat-icon>{{ isOpen ? 'chevron_left' : 'menu' }}</mat-icon>
+        </button>
+    }
+
+    @if (isOpen) {
+        <div class="chat-list__backdrop" (click)="toggleMenu()"></div>
+    }
+
+    <aside class="chat-list__menu" [class.is-open]="isOpen">
+        <div class="chat-list__header">Чаты</div>
+        @if (canCreateChat) {
+            <button
+                    type="button"
+                    class="chat-list__new"
+                    (click)="createChat()"
+            >+ Новый чат
+            </button>
+        }
+        <nav class="chat-list__nav">
+            @for (chat of chats; track chat.id) {
+                <a
+                        class="chat-list__item"
+                        [class.is-active]="chat.id === selectedChatId"
+                        (click)="selectChat(chat)"
+                >{{ chat.name }}</a>
+            }
+        </nav>
+    </aside>
+</div>

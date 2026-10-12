@@ -1,0 +1,130 @@
+.chat-list {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.chat-list__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  margin: 8px 4px;
+  z-index: 1300;
+}
+
+.chat-list__menu {
+  width: 260px;
+  height: 100%;
+  background: #f7f9fc;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.25s ease;
+
+  &:not(.is-open) {
+    width: 0;
+    border-right: none;
+  }
+}
+
+.chat-list__header {
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.chat-list__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.chat-list__new {
+  margin: 0 8px 8px;
+  padding: 10px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: transparent;
+  color: #1d4ed8;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: #e2e8f0;
+  }
+}
+
+.chat-list__item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: #e2e8f0;
+  }
+
+  &.is-active {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 500;
+  }
+}
+
+.chat-list__backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chat-list {
+    width: 0;
+  }
+
+  .chat-list__toggle {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    margin: 0;
+  }
+
+  .chat-list__menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 1200;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+
+    &.is-open {
+      transform: translateX(0);
+    }
+  }
+
+  .chat-list__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1100;
+  }
+}

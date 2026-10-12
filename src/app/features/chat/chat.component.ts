@@ -1,7 +1,8 @@
-import {Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef} from '@angular/core';
+import {AfterViewChecked, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {Subscription} from 'rxjs';
 import {LocalStorageService} from '../../core/services/local-storage.service';
 import {ChatService} from './services/chat.service';
+import {ChatListService} from './services/chat-list.service';
 import {ChatMessage, ChatResponse, ChatViewDto} from './models/chat.model';
 import {MessageBubbleComponent} from './components/message-bubble/message-bubble.component';
 import {MessageBadgesComponent} from './components/message-badges/message-badges.component';
@@ -23,6 +24,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
     private existingChatId: string = '';
     private typingIntervals = new Set<ReturnType<typeof setInterval>>();
+    private loadToken = 0;
 
     messages: ChatMessage[] = [];
     isLoading = false;
@@ -31,47 +33,60 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     constructor(
         private chatService: ChatService,
         private cdr: ChangeDetectorRef,
-        private localStorageService: LocalStorageService
+        private localStorageService: LocalStorageService,
+        private chatListService: ChatListService
     ) {
     }
 
-    async ngOnInit(): Promise<void> {
+    ngOnInit(): void {
+        this.localStorageService.flushCategoryId();
 
-        const chatId = this.localStorageService.getChatId();
+        this.subscriptions.add(
+            this.chatListService.selectedChatId$.subscribe((chatId) => {
+                if (!chatId) {
+                    return;
+                }
 
-        this.localStorageService.flushCategoryId()
-
-        if (chatId) {
-            this.existingChatId = chatId;
-            const messageList = await this.chatService.loadMessages(this.existingChatId);
-            if (messageList.message.length < 1) {
-                this.addStartMessage();
-            }
-
-            messageList.message.forEach((message) => {
-                this.addMessage({
-                    id: message.id,
-                    content: this.chatService.formatContent(message.text),
-                    sender: message.direction == 1 ? 'user' : 'ai',
-                    timestamp: new Date(),
-                    isTyping: false,
-                    displayContent: this.chatService.formatContent(message.text)
-                });
-            });
-        } else {
-            const chatId = await this.chatService.startChat();
-            this.existingChatId = chatId;
-            this.localStorageService.setChatId(chatId);
-
-            this.addStartMessage();
-        }
-        this.cdr.detectChanges();
+                void this.loadChatMessages(chatId);
+            })
+        );
     }
 
     ngOnDestroy(): void {
         this.subscriptions.unsubscribe();
         this.typingIntervals.forEach((intervalId) => clearInterval(intervalId));
         this.typingIntervals.clear();
+    }
+
+    private async loadChatMessages(chatId: string): Promise<void> {
+        const token = ++this.loadToken;
+
+        this.existingChatId = chatId;
+        this.messages = [];
+
+        const messageList = await this.chatService.loadMessages(chatId);
+
+        if (token !== this.loadToken) {
+            return;
+        }
+
+        if (messageList.message.length < 1) {
+            this.addStartMessage();
+        }
+
+        messageList.message.forEach((message) => {
+            this.addMessage({
+                id: message.id,
+                content: this.chatService.formatContent(message.text),
+                sender: message.direction == 1 ? 'user' : 'ai',
+                timestamp: new Date(),
+                isTyping: false,
+                displayContent: this.chatService.formatContent(message.text)
+            });
+        });
+
+        this.cdr.detectChanges();
+        this.scrollToBottom();
     }
 
     ngAfterViewChecked(): void {

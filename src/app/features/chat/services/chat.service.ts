@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {firstValueFrom, Observable, tap} from 'rxjs';
 import {LocalStorageService} from '../../../core/services/local-storage.service';
 import {environment} from '../../../../environments/environment';
-import {ChatRequest, ChatResponse, MessageListItem, MessageListResponse, StartResponse} from '../models/chat.model';
+import {ChatListResponse, ChatRequest, ChatResponse, MessageListItem, MessageListResponse, StartResponse} from '../models/chat.model';
 
 @Injectable({
     providedIn: 'root'
@@ -31,6 +31,10 @@ export class ChatService {
         );
     }
 
+    public getList(): Observable<ChatListResponse> {
+        return this.http.get<ChatListResponse>(`${this.apiUrl}/model/chat/list`);
+    }
+
     public async startChat(): Promise<string> {
         const response = await firstValueFrom(
             this.http.post<StartResponse>(`${this.apiUrl}/model/chat/start/start`, {})
@@ -53,14 +57,56 @@ export class ChatService {
     }
 
     formatContent(content: string): string {
-        // Заменяем \n на <br /> и экранируем другие HTML символы
-        return content
+        const linkPlaceholders: string[] = [];
+
+        let processed = content.replace(/<a\b[^>]*>(.*?)<\/a>/gis, (match, innerText) => {
+            const openTagMatch = match.match(/<a\b([^>]*)>/is);
+            if (!openTagMatch) return match;
+
+            const attrsStr = openTagMatch[1];
+
+            const hrefMatch = attrsStr.match(/href\s*=\s*"([^"]*)"/i)
+                || attrsStr.match(/href\s*=\s*'([^']*)'/i);
+            const href = hrefMatch ? hrefMatch[1] : '';
+
+            const titleMatch = attrsStr.match(/title\s*=\s*"([^"]*)"/i)
+                || attrsStr.match(/title\s*=\s*'([^']*)'/i);
+            const title = titleMatch ? titleMatch[1] : '';
+
+            const escapedInner = this.escapeHtml(innerText);
+
+            let sanitized = '<a';
+            if (href) {
+                sanitized += ` href="${this.escapeHtml(href)}"`;
+            }
+            if (title) {
+                sanitized += ` title="${this.escapeHtml(title)}"`;
+            }
+            sanitized += `>${escapedInner}</a>`;
+
+            const index = linkPlaceholders.length;
+            linkPlaceholders.push(sanitized);
+            return `___LINK_PH_${index}___`;
+        });
+
+        processed = this.escapeHtml(processed);
+
+        processed = processed.replace(/___LINK_PH_(\d+)___/g, (_, index) => {
+            return linkPlaceholders[parseInt(index, 10)];
+        });
+
+        processed = processed.replace(/\n/g, '<br />');
+
+        return processed;
+    }
+
+    private escapeHtml(text: string): string {
+        return text
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;')
-            .replace(/\n/g, '<br />');
+            .replace(/'/g, '&#039;');
     }
 
     private getAnswerCategoryId(response: ChatResponse): string | null {
