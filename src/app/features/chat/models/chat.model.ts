@@ -23,6 +23,7 @@ export interface ChatQuestionVariantDto {
 }
 
 export interface ChatViewDto {
+    guided?: GuidedState;
     type: string;
     id: string;
     value: string;
@@ -43,11 +44,20 @@ export interface ChatRequest {
 }
 
 export interface ChatResponse {
+    guided?: GuidedState;
+    status?: string;
     answer?: {
         content: string;
         next?: ChatNextDto[];
         category?: ChatCategoryDto;
     };
+}
+
+export interface GuidedState {
+    version?: string;
+    categoryId?: string;
+    stageId?: string;
+    context: Record<string, boolean | null>;
 }
 
 export interface ChatCategoryDto {

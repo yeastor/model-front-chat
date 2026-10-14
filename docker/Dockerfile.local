@@ -1,0 +1,14 @@
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+# Build dependencies (including Angular CLI) are pinned by package-lock.json.
+RUN npm ci --no-audit --no-fund
+COPY . .
+# Local builds must not fetch remote font CSS during HTML generation.
+RUN npm run build -- --configuration production,local
+
+FROM nginx:alpine
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY --from=build /app/dist/model-front-chat /usr/share/nginx/html
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]

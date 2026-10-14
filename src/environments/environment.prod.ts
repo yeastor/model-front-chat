@@ -1,4 +1,5 @@
 export const environment = {
     production: true,
-    apiUrl: '/api' // Для продакшена, если используется прокси
+    apiUrl: '/api/chat',
+    loginUrl: '/login?next=/chat'
 };

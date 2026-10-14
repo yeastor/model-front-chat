@@ -1,13 +1,15 @@
 import {AfterViewChecked, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild} from '@angular/core';
-import {Subscription} from 'rxjs';
+import {firstValueFrom, Subscription} from 'rxjs';
 import {LocalStorageService} from '../../core/services/local-storage.service';
 import {ChatService} from './services/chat.service';
 import {ChatListService} from './services/chat-list.service';
-import {ChatMessage, ChatResponse, ChatViewDto} from './models/chat.model';
+import {ChatMessage, ChatResponse, ChatViewDto, GuidedState} from './models/chat.model';
 import {MessageBubbleComponent} from './components/message-bubble/message-bubble.component';
 import {MessageBadgesComponent} from './components/message-badges/message-badges.component';
 import {LoadingSpinnerComponent} from '../../shared/components/loading-spinner/loading-spinner.component';
 import {ChatInputComponent} from './components/chat-input/chat-input.component';
+import { ChatPdfService } from './services/chat-pdf.service';
+import { A11yModule } from '@angular/cdk/a11y';
 
 @Component({
     selector: 'app-chat',
@@ -17,6 +19,7 @@ import {ChatInputComponent} from './components/chat-input/chat-input.component';
         MessageBadgesComponent,
         LoadingSpinnerComponent,
         ChatInputComponent,
+        A11yModule,
     ],
     styleUrls: ['./chat.component.scss']
 })
@@ -28,13 +31,22 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     messages: ChatMessage[] = [];
     isLoading = false;
+    historyReady = false;
+    historyError = false;
+    sendError = false;
+    exportBusy = false;
+    exportError = '';
+    shareOpen = false;
+    shareSupported = false;
+    preparedPdf?: File;
     private subscriptions = new Subscription();
 
     constructor(
         private chatService: ChatService,
         private cdr: ChangeDetectorRef,
         private localStorageService: LocalStorageService,
-        private chatListService: ChatListService
+        private chatListService: ChatListService,
+        private chatPdfService: ChatPdfService
     ) {
     }
 
@@ -53,6 +65,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     ngOnDestroy(): void {
+        ++this.loadToken;
+        this.preparedPdf = undefined;
         this.subscriptions.unsubscribe();
         this.typingIntervals.forEach((intervalId) => clearInterval(intervalId));
         this.typingIntervals.clear();
@@ -63,34 +77,126 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         this.existingChatId = chatId;
         this.messages = [];
+        this.isLoading = true;
+        this.historyReady = false;
+        this.historyError = false;
+        this.sendError = false;
+        this.followLatest = true;
+        this.preparedPdf = undefined;
+        this.shareOpen = false;
+        this.exportError = '';
+        this.exportBusy = false;
+        this.localStorageService.flushCategoryId();
 
-        const messageList = await this.chatService.loadMessages(chatId);
+        try {
+            const messageList = await this.chatService.loadMessages(chatId);
 
-        if (token !== this.loadToken) {
-            return;
-        }
+            if (token !== this.loadToken) {
+                return;
+            }
+            this.localStorageService.replaceCategoryId(messageList.message.at(-1)?.category?.id);
+            this.historyReady = true;
 
-        if (messageList.message.length < 1) {
-            this.addStartMessage();
-        }
-
-        messageList.message.forEach((message) => {
-            this.addMessage({
-                id: message.id,
-                content: this.chatService.formatContent(message.text),
-                sender: message.direction == 1 ? 'user' : 'ai',
-                timestamp: new Date(),
-                isTyping: false,
-                displayContent: this.chatService.formatContent(message.text)
+            messageList.message.forEach((message) => {
+                this.addMessage({
+                    id: message.id,
+                    content: this.chatService.formatContent(message.text),
+                    sender: message.direction == 1 ? 'user' : 'ai',
+                    timestamp: new Date(),
+                    isTyping: false,
+                    displayContent: this.chatService.formatContent(message.text)
+                });
             });
-        });
 
-        this.cdr.detectChanges();
-        this.scrollToBottom();
+            const params = new URLSearchParams(window.location.search);
+            const stored = this.localStorageService.getGuidedState(chatId);
+            const launch = !messageList.message.length && params.get('category_id') && params.get('stage_id')
+                ? {categoryId: params.get('category_id')!, stageId: params.get('stage_id')!, context: {}} : undefined;
+            const state = stored || launch;
+            if (state || !messageList.message.length) {
+                try {
+                    const response = await firstValueFrom(this.chatService.sendGuided(chatId, '', state || {context: {}}, true));
+                    if (token !== this.loadToken) return;
+                    this.localStorageService.setGuidedState(chatId, response.guided);
+                    this.localStorageService.replaceCategoryId(response.answer?.category?.id);
+                    for (const message of this.mapResponseToMessages(response)) this.addMessage({...message, content: this.chatService.formatContent(message.content), areViewsVisible: true});
+                } catch {
+                    // A stale graph or a temporarily unavailable runtime must not hide saved history.
+                    if (token === this.loadToken) {
+                        this.localStorageService.setGuidedState(chatId);
+                        this.sendError = true;
+                    }
+                }
+            }
+
+            this.cdr.detectChanges();
+            this.scrollToBottom();
+        } catch {
+            if (token === this.loadToken) this.historyError = true;
+        } finally {
+            if (token === this.loadToken) {
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        }
     }
 
     ngAfterViewChecked(): void {
-        this.scrollToBottom();
+        // Leave the reader's scroll position alone while they browse older messages.
+        if (this.followLatest) this.scrollToBottom();
+    }
+
+    private followLatest = true;
+
+    onMessagesScroll(): void {
+        const element = this.messagesContainer.nativeElement as HTMLElement;
+        this.followLatest = element.scrollHeight - element.clientHeight - element.scrollTop < 80;
+    }
+
+    retryHistory(): void {
+        if (!this.isLoading && this.existingChatId) void this.loadChatMessages(this.existingChatId);
+    }
+
+    async exportPdf(share = false): Promise<void> {
+        if (this.exportBusy || this.isLoading || !this.historyReady) return;
+        const token = this.loadToken;
+        this.exportBusy = true;
+        this.exportError = '';
+        try {
+            const data = await this.chatService.exportChat(this.existingChatId);
+            if (token !== this.loadToken || data.chat.id !== this.existingChatId) return;
+            const file = await this.chatPdfService.create(data);
+            if (token !== this.loadToken) return;
+            if (share) {
+                this.preparedPdf = file;
+                this.shareSupported = !!navigator.canShare?.({ files: [file] });
+                this.shareOpen = true;
+            } else this.chatPdfService.download(file);
+        } catch {
+            if (token === this.loadToken) this.exportError = 'Не удалось подготовить PDF. Проверьте соединение и попробуйте ещё раз.';
+        } finally {
+            if (token === this.loadToken) { this.exportBusy = false; this.cdr.detectChanges(); }
+        }
+    }
+
+    closeShare(): void { this.shareOpen = false; this.preparedPdf = undefined; }
+
+    async confirmShare(): Promise<void> {
+        const file = this.preparedPdf;
+        if (!file) return;
+        const token = this.loadToken;
+        try {
+            // This separate explicit click preserves Web Share user activation.
+            if (this.shareSupported) await navigator.share({ files: [file] });
+            else this.chatPdfService.download(file);
+            if (token === this.loadToken) this.closeShare();
+        } catch (error) {
+            if (token !== this.loadToken) return;
+            if (!(error instanceof DOMException && error.name === 'AbortError')) {
+                this.exportError = 'Браузер не смог поделиться файлом. Скачайте PDF и отправьте его самостоятельно.';
+            }
+            this.closeShare();
+        } finally { if (token === this.loadToken) this.cdr.detectChanges(); }
     }
 
     onSendMessage(message: string): void {
@@ -104,15 +210,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             return;
         }
 
-        this.sendChatMessage(view.question, view.id, view.variantId, view.categoryId);
+        this.sendChatMessage(view.question, view.guided ? view.question : view.id, view.variantId, view.categoryId, view.guided);
     }
 
-    private sendChatMessage(chatMessageView: string, sendToBackMessage: string, variantId?: string, categoryId?: string): void {
-        if (!chatMessageView) {
+    private sendChatMessage(chatMessageView: string, sendToBackMessage: string, variantId?: string, categoryId?: string, guided?: GuidedState): void {
+        if (!chatMessageView || this.isLoading || !this.historyReady) {
             return;
         }
+        const token = this.loadToken;
 
         const resolvedCategoryId = categoryId || this.localStorageService.getCategoryId() || undefined;
+
+        this.sendError = false;
+        this.followLatest = true;
 
         const userMessage: ChatMessage = {
             id: this.generateId(),
@@ -120,7 +230,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             sender: 'user',
             timestamp: new Date(),
             isTyping: false,
-            displayContent: chatMessageView,
+            displayContent: this.chatService.formatContent(chatMessageView),
             views: [],
             areViewsVisible: false
         };
@@ -141,8 +251,17 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         this.isLoading = true;
 
-        const subscription = this.chatService.sendMessage(this.existingChatId, sendToBackMessage, variantId, resolvedCategoryId).subscribe({
+        // Legacy buttons keep their route. Free text and guided controls use explicit facts.
+        const request = variantId && !guided
+            ? this.chatService.sendMessage(this.existingChatId, sendToBackMessage, variantId, resolvedCategoryId)
+            : this.chatService.sendGuided(this.existingChatId, sendToBackMessage, guided, false, resolvedCategoryId);
+        const subscription = request.subscribe({
             next: async (response) => {
+                this.chatListService.notifyShell();
+                void this.chatListService.refresh().catch(() => {});
+                if (token !== this.loadToken) return;
+                this.localStorageService.setGuidedState(this.existingChatId, response.guided);
+                this.localStorageService.replaceCategoryId(response.answer?.category?.id);
                 this.messages.pop();
 
                 this.isLoading = false;
@@ -156,15 +275,22 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                 }
 
                 for (const aiMessage of aiMessages) {
-                    this.messages.push(aiMessage);
-                    await this.typeMessage(aiMessage);
+                    if (token !== this.loadToken) return;
+                    if (response.guided) this.addMessage({...aiMessage, content: this.chatService.formatContent(aiMessage.content), areViewsVisible: true});
+                    else {
+                        this.messages.push(aiMessage);
+                        await this.typeMessage(aiMessage);
+                    }
                 }
+                this.cdr.detectChanges();
             },
             error: (error) => {
+                this.chatListService.notifyShell();
+                if (token !== this.loadToken) return;
                 console.error('Error sending message:', error);
                 this.messages.pop();
-                this.addErrorMessage();
                 this.isLoading = false;
+                this.addErrorMessage();
             }
         });
 
@@ -200,6 +326,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                             type: v.type,
                             value: v.value,
                             variantId: v.variantId,
+                            guided: v.guided,
                         }
                     );
                 }
@@ -224,6 +351,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     private typeMessage(message: ChatMessage): Promise<void> {
+        const token = this.loadToken;
         const formattedContent: string = this.chatService.formatContent(message.content);
         let index: number = 0;
         const speed = 20;
@@ -236,6 +364,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         return new Promise((resolve) => {
             const typeWriter = setInterval(() => {
+                if (token !== this.loadToken) {
+                    clearInterval(typeWriter);
+                    this.typingIntervals.delete(typeWriter);
+                    resolve();
+                    return;
+                }
                 if (index < formattedContent.length) {
                     message.displayContent += formattedContent.charAt(index);
                     index++;
@@ -254,18 +388,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     private addErrorMessage(): void {
-        const errorMessage: ChatMessage = {
-            id: this.generateId(),
-            content: 'Извините, произошла ошибка. Пожалуйста, попробуйте еще раз.',
-            sender: 'ai',
-            timestamp: new Date(),
-            isTyping: false,
-            displayContent: '',
-            views: [],
-            areViewsVisible: false
-        };
-        this.messages.push(errorMessage);
-        void this.typeMessage(errorMessage);
+        this.sendError = true;
+        this.cdr.detectChanges();
     }
 
     private addMessage(message: ChatMessage): void {
@@ -287,17 +411,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                 this.messagesContainer.nativeElement.scrollHeight;
         } catch (err) {
         }
-    }
-
-    private addStartMessage() {
-        this.addMessage({
-            id: this.generateId(),
-            content: 'Привет! Я ваш AI помощник. Чем могу помочь?',
-            sender: 'ai',
-            timestamp: new Date(),
-            isTyping: false,
-            displayContent: ''
-        });
     }
 
 }

@@ -6,11 +6,11 @@
 }
 
 .message-badge {
-  border: none;
+  border: 1px solid var(--chat-border);
   border-radius: 999px;
   padding: 10px 14px;
-  background: #e0f2fe;
-  color: #0f3b57;
+  background: var(--chat-hover);
+  color: var(--chat-brand);
   font: inherit;
   line-height: 1.2;
   cursor: pointer;
@@ -18,7 +18,7 @@
 }
 
 .message-badge:hover:not(:disabled) {
-  background: #bae6fd;
+  background: var(--chat-user);
   transform: translateY(-1px);
 }
 

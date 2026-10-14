@@ -1,6 +1,6 @@
 {
-  "/model/chat/**": {
-    "target": "http://localhost:8094",
+  "/api/chat/**": {
+    "target": "http://localhost:3000",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"

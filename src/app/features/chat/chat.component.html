@@ -1,5 +1,14 @@
 <div class="chat-container">
-    <div class="chat-messages" #messagesContainer>
+    <div class="chat-messages" #messagesContainer (scroll)="onMessagesScroll()" role="log" aria-label="История диалога" aria-live="off">
+        @if (historyReady && messages.length === 0) {
+            <section class="chat-welcome">
+                <span class="chat-welcome__mark" aria-hidden="true">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 3v-11a9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                </span>
+                <h2>Чем можем помочь?</h2>
+                <p>Опишите свою ситуацию и задайте вопрос. АЙзащита поможет разобраться и найти следующий шаг.</p>
+            </section>
+        }
         <ng-container>
             @for (message of messages; track message.id) {
                 <div
@@ -27,14 +36,46 @@
         </ng-container>
 
         @if (isLoading) {
-            <app-loading-spinner></app-loading-spinner>
+            <app-loading-spinner [label]="historyReady ? 'АЙзащита готовит ответ…' : 'Загружаем историю…'"></app-loading-spinner>
         }
     </div>
 
     <div class="chat-input-container">
+        @if (historyError) {
+            <div class="chat-error" role="alert">
+                <p>Не удалось загрузить историю. Ваши сохранённые сообщения не удалены.</p>
+                <button type="button" (click)="retryHistory()">Повторить загрузку</button>
+            </div>
+        }
+        @if (sendError) {
+            <div class="chat-error" role="alert">
+                Не удалось получить ответ. Попробуйте отправить вопрос ещё раз. Перед повторной отправкой можно проверить историю, обновив страницу.
+            </div>
+        }
+        <p class="chat-input-notice" id="chat-input-notice">Ответы помощника могут содержать неточности. Проверяйте важную информацию.</p>
         <app-chat-input
                 (sendMessage)="onSendMessage($event)"
-                [disabled]="isLoading"
+                [disabled]="isLoading || !historyReady"
+                [canExport]="historyReady && !isLoading && messages.length > 0"
+                [exportBusy]="exportBusy"
+                (downloadChat)="exportPdf()"
+                (shareChat)="exportPdf(true)"
         ></app-chat-input>
+        @if (exportBusy) { <p class="chat-disclaimer" role="status">Подготавливаем PDF…</p> }
+        @if (exportError) { <p class="chat-error" role="alert">{{ exportError }}</p> }
     </div>
 </div>
+
+@if (shareOpen) {
+    <div class="share-backdrop">
+        <section class="share-dialog" role="dialog" aria-modal="true" aria-labelledby="share-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown.escape)="closeShare()">
+            <h2 id="share-title">Поделиться PDF чата</h2>
+            <p>PDF содержит всю сохранённую переписку и может содержать персональные данные. Передавайте его только тем, кому доверяете. Публичная ссылка на диалог не создаётся.</p>
+            @if (!shareSupported) { <p>Этот браузер не поддерживает отправку файлов. Скачайте PDF и отправьте его самостоятельно.</p> }
+            <div class="share-actions">
+                <button type="button" class="share-confirm" (click)="confirmShare()">{{ shareSupported ? 'Поделиться файлом' : 'Скачать PDF' }}</button>
+                <button type="button" (click)="closeShare()" cdkFocusInitial>Отмена</button>
+            </div>
+        </section>
+    </div>
+}

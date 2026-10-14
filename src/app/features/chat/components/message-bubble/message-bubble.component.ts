@@ -13,7 +13,6 @@ import {TypingIndicatorComponent} from '../typing-indicator/typing-indicator.com
             } @else {
                 <app-typing-indicator></app-typing-indicator>
             }
-            <div class="message-time">{{ getFormattedTime() }}</div>
         </div>
     `,
     imports: [
@@ -33,10 +32,4 @@ export class MessageBubbleComponent {
             : `${baseClass} ai-message`;
     }
 
-    getFormattedTime(): string {
-        return this.message.timestamp.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
 }
