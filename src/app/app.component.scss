@@ -1,5 +1,5 @@
 .app-container {
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -9,13 +9,12 @@
     flex-shrink: 0;
     background: white;
     padding: 16px 20px;
-    border-bottom: 1px solid #e0e0e0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--chat-border);
 
     h1 {
         font-size: 20px;
         font-weight: 600;
-        color: #333;
+        color: var(--chat-brand);
         text-align: center;
     }
 }
@@ -31,4 +30,13 @@
     flex: 1;
     min-width: 0;
     overflow: hidden;
+}
+
+.app-error {
+    margin: 24px;
+    padding: 20px;
+    border: 1px solid var(--chat-border);
+    border-radius: var(--chat-radius);
+    color: var(--chat-error);
+    font-size: 14px;
 }

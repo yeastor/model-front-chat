@@ -1,9 +1,31 @@
-<div class="chat-container">
-    <div class="chat-messages" #messagesContainer>
+<div class="chat-container" [class.chat-container--empty-topic]="topicMode && messages.length === 0">
+    <div class="chat-messages" #messagesContainer tabindex="0" role="log" aria-label="История диалога" aria-live="off">
+        @if (topicMode && hasAssistantAnswer && topicIntro) {
+            <header class="topic-chat-intro">
+                <h1>{{ topicIntro.title }}</h1>
+                @if (topicIntro.description) { <p>{{ topicIntro.description }}</p> }
+                @if (topicIntro.contentHtml) { <div [innerHTML]="topicIntro.contentHtml"></div> }
+            </header>
+        }
+        @if (articleGuidedQuestion) {
+            <p class="chat-guided-notice">Уточним обстоятельства, чтобы подобрать подходящий ответ.</p>
+        }
+        @if (historyReady && messages.length === 0 && !topicMode) {
+            <section class="chat-welcome">
+                <span class="chat-welcome__mark" aria-hidden="true">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 3v-11a9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                </span>
+                <h2>Чем можем помочь?</h2>
+                <p>Опишите свою ситуацию и задайте вопрос. АЙзащита поможет разобраться и найти следующий шаг.</p>
+            </section>
+        }
         <ng-container>
             @for (message of messages; track message.id) {
+                @if (!message.views?.length || message.areViewsVisible || message.content.trim()) {
                 <div
                         class="chat-message-group"
+                        [attr.data-message-id]="message.id"
+                        [class.chat-message-group--question]="message.isQuestion"
                         [class.chat-message-group--user]="message.sender === 'user'"
                         [class.chat-message-group--ai]="message.sender === 'ai'"
                 >
@@ -23,18 +45,81 @@
                         ></app-message-badges>
                     }
                 </div>
+                }
             }
         </ng-container>
 
         @if (isLoading) {
-            <app-loading-spinner></app-loading-spinner>
+            <app-loading-spinner [label]="historyReady ? 'АЙзащита готовит ответ…' : 'Загружаем историю…'"></app-loading-spinner>
         }
     </div>
 
     <div class="chat-input-container">
+        @if (topicContextError) {
+            <div class="chat-error" role="alert">Не удалось загрузить настройки чата. <button type="button" (click)="loadTopicContext()">Повторить</button></div>
+        }
+        @if (historyError) {
+            <div class="chat-error" role="alert">
+                <p>Не удалось загрузить историю. Ваши сохранённые сообщения не удалены.</p>
+                <button type="button" (click)="retryHistory()">Повторить загрузку</button>
+            </div>
+        }
+        @if (sendError) {
+            <div class="chat-error" role="alert">
+                Не удалось получить ответ. Попробуйте отправить вопрос ещё раз. Перед повторной отправкой можно проверить историю, обновив страницу.
+            </div>
+        }
+        <p class="chat-input-notice" id="chat-input-notice">АЙЗАЩИТА может допускать ошибки. Проверяйте важную информацию.</p>
+        @if (sendError) { <button type="button" (click)="retryTurn()" [disabled]="isLoading">Повторить отправку</button> }
         <app-chat-input
                 (sendMessage)="onSendMessage($event)"
-                [disabled]="isLoading"
+                [disabled]="isLoading || !historyReady"
+                [guidedQuestion]="articleGuidedQuestion"
+                [placeholder]="topicPlaceholder"
+                [chips]="topicMode && messages.length === 0 ? topicChips : []"
+                (chipClick)="onTopicChip($event)"
+                [showExportTools]="hasAssistantAnswer"
+                [canExport]="historyReady && !isLoading && hasAssistantAnswer"
+                [exportBusy]="exportBusy"
+                (downloadChat)="exportPdf()"
+                (shareChat)="exportPdf(true)"
         ></app-chat-input>
+        @if (exportBusy) { <p class="chat-disclaimer" role="status">Подготавливаем PDF…</p> }
+        @if (exportError) { <p class="chat-error" role="alert">{{ exportError }}</p> }
     </div>
 </div>
+
+@if (shareOpen) {
+    <div class="share-backdrop">
+        <section class="share-dialog" role="dialog" aria-modal="true" aria-labelledby="share-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown.escape)="closeShare()">
+            <h2 id="share-title">Поделиться PDF чата</h2>
+            <p>PDF содержит всю сохранённую переписку и может содержать персональные данные. Передавайте его только тем, кому доверяете. Публичная ссылка на диалог не создаётся.</p>
+            @if (!shareSupported) { <p>Этот браузер не поддерживает отправку файлов. Скачайте PDF и отправьте его самостоятельно.</p> }
+            <div class="share-actions">
+                <button type="button" class="share-confirm" (click)="confirmShare()">{{ shareSupported ? 'Поделиться файлом' : 'Скачать PDF' }}</button>
+                <button type="button" (click)="closeShare()" cdkFocusInitial>Отмена</button>
+            </div>
+        </section>
+    </div>
+}
+
+
+@if (feedbackView) {
+    <div class="share-backdrop">
+        <section class="share-dialog feedback-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown.escape)="closeFeedback()">
+            <h2 id="feedback-title">Помочь АЙзащите стать лучше</h2>
+            <p>Отправьте ситуацию нашей команде. Мы рассмотрим её и используем для улучшения ответов. Это не обращение за индивидуальной юридической помощью.</p>
+            <p>Отправится вся сохранённая переписка в этом чате, включая ваши сообщения и ответы АЙзащиты. Она может содержать персональные данные. Просмотрите её перед отправкой.</p>
+            @if (feedbackLoading) { <p role="status">Загружаем переписку…</p> }
+            @if (feedbackError) { <p role="alert">{{ feedbackError }}</p> }
+            <label for="feedback-text">Переписка для отправки</label>
+            <textarea id="feedback-text" [value]="feedbackText" readonly rows="5" cdkFocusInitial></textarea>
+            <label class="feedback-consent"><input type="checkbox" [(ngModel)]="feedbackConsent"> <span>{{ feedbackView.guided?.native?.consentText }}</span></label>
+            <p><a href="/legal/privacy" target="_top">Политика обработки персональных данных</a></p>
+            <div class="share-actions">
+                <button type="button" class="share-confirm" (click)="submitFeedback()" [disabled]="!feedbackConsent || feedbackLoading || !!feedbackError || !feedbackText.trim() || isLoading">Отправить переписку</button>
+                <button type="button" (click)="closeFeedback()">Продолжить без отправки</button>
+            </div>
+        </section>
+    </div>
+}

@@ -5,15 +5,12 @@ WORKDIR /app
 
 # Копируем package.json и устанавливаем зависимости
 COPY package.json package-lock.json ./
-RUN npm install
-RUN npm ci --only=production
+RUN npm ci --include=dev
 
 # Копируем исходный код
 COPY . .
 
 # Собираем приложение
-RUN npm install -g @angular/cli && \
-    npm install --save-dev @angular-devkit/build-angular
 RUN npm run build:prod
 
 

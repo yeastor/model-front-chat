@@ -1,6 +1,5 @@
 import {Component, Input, OnDestroy, OnInit} from '@angular/core';
 import {Subscription} from 'rxjs';
-import {MatIcon} from '@angular/material/icon';
 import {MatIconButton} from '@angular/material/button';
 import {ChatListService} from '../../services/chat-list.service';
 import {ChatListItem} from '../../models/chat.model';
@@ -9,7 +8,6 @@ import {ChatListItem} from '../../models/chat.model';
     selector: 'app-chat-list',
     templateUrl: './chat-list.component.html',
     imports: [
-        MatIcon,
         MatIconButton
     ],
     styleUrls: ['./chat-list.component.scss']
@@ -48,7 +46,6 @@ export class ChatListComponent implements OnInit, OnDestroy {
             })
         );
 
-        void this.chatListService.init();
     }
 
     ngOnDestroy(): void {

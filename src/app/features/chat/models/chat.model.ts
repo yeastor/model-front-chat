@@ -1,4 +1,5 @@
 export interface ChatMessage {
+    isQuestion?: boolean;
     id: string;
     content: string;
     sender: 'user' | 'ai';
@@ -23,6 +24,7 @@ export interface ChatQuestionVariantDto {
 }
 
 export interface ChatViewDto {
+    guided?: GuidedState;
     type: string;
     id: string;
     value: string;
@@ -42,12 +44,28 @@ export interface ChatRequest {
     question: ChatQuestionDto;
 }
 
+export interface ConversationEnvelope { sessionId: string; revision: number; }
 export interface ChatResponse {
+    conversation?: ConversationEnvelope;
+    presentation?: { kind: 'full' | 'continuation' | 'clarification' | 'notice'; responseId: string; answerFingerprint?: string; referencesResponseId?: string };
+    turn?: { turnId: string; revision: number; replayed: boolean; messageId: string };
+    guided?: GuidedState;
+    status?: string;
     answer?: {
         content: string;
         next?: ChatNextDto[];
         category?: ChatCategoryDto;
     };
+}
+
+export interface GuidedState {
+    conversation?: ConversationEnvelope;
+    native?: {sessionId: string; nonce: string; kind?: string; blockId?: string; fieldKey?: string; value?: boolean | null; questionId?: string; revision?: number; episodeId?: string; roundId?: string; offerId?: string; draft?: string; consentVersion?: string; consentText?: string; text?: string; consent?: boolean};
+    version?: string;
+    entryVariantId?: string;
+    categoryId?: string;
+    stageId?: string;
+    context: Record<string, boolean | null>;
 }
 
 export interface ChatCategoryDto {
